@@ -1,0 +1,109 @@
+{
+  "name": "Bear Put Spread",
+  "description": "A defined-risk options strategy that profits from a moderate downward move. Buy a higher-strike put and sell a lower-strike put with the same expiration. Max loss is the net debit. Max profit is the spread width minus the debit.",
+  "category": "options",
+  "tags": ["options", "bear-put-spread", "defined-risk", "debit-spread", "vertical-spread", "bearish"],
+  "asset_types": ["options"],
+  "visibility": "public",
+  "version": 1,
+  "visual_blocks": [
+    {
+      "id": "trigger-below-ma",
+      "type": "trigger",
+      "name": "Price Crosses MA",
+      "description": "Underlying price is below 20 SMA — bearish bias confirmed",
+      "icon": "TrendingDown",
+      "inputs": [
+        { "id": "period", "name": "MA Period", "type": "number", "required": true, "defaultValue": 20 },
+        { "id": "direction", "name": "Direction", "type": "string", "required": true, "defaultValue": "below" }
+      ],
+      "outputs": [{ "id": "signal", "name": "Signal", "type": "signal" }],
+      "config": {},
+      "position": { "x": 100, "y": 100 }
+    },
+    {
+      "id": "trigger-rsi-overbought",
+      "type": "trigger",
+      "name": "RSI Threshold",
+      "description": "RSI above 60 — overbought, put spread has room to profit",
+      "icon": "Activity",
+      "inputs": [
+        { "id": "period", "name": "RSI Period", "type": "number", "required": true, "defaultValue": 14 },
+        { "id": "threshold", "name": "Threshold", "type": "number", "required": true, "defaultValue": 60 },
+        { "id": "direction", "name": "Direction", "type": "string", "required": true, "defaultValue": "above" }
+      ],
+      "outputs": [{ "id": "signal", "name": "Signal", "type": "signal" }],
+      "config": {},
+      "position": { "x": 100, "y": 280 }
+    },
+    {
+      "id": "condition-confirm",
+      "type": "condition",
+      "name": "AND",
+      "description": "Both bearish bias AND RSI overbought",
+      "icon": "GitMerge",
+      "inputs": [
+        { "id": "input1", "name": "Below MA", "type": "signal", "required": true },
+        { "id": "input2", "name": "RSI OK", "type": "signal", "required": true }
+      ],
+      "outputs": [{ "id": "output", "name": "Spread Entry", "type": "signal" }],
+      "config": {},
+      "position": { "x": 350, "y": 180 }
+    },
+    {
+      "id": "action-buy-long-put",
+      "type": "action",
+      "name": "Buy",
+      "description": "Buy ATM put — long leg of the spread",
+      "icon": "ArrowDownCircle",
+      "inputs": [
+        { "id": "trigger", "name": "Trigger", "type": "signal", "required": true },
+        { "id": "quantity", "name": "Contracts", "type": "number", "required": true, "defaultValue": 1 }
+      ],
+      "outputs": [{ "id": "executed", "name": "Executed", "type": "signal" }],
+      "config": { "option_type": "put", "strike_selection": "ATM", "expiration_days": 30, "leg": "long" },
+      "position": { "x": 600, "y": 100 }
+    },
+    {
+      "id": "action-sell-short-put",
+      "type": "action",
+      "name": "Sell",
+      "description": "Sell OTM put 5% below — short leg caps max profit",
+      "icon": "ArrowUpCircle",
+      "inputs": [
+        { "id": "trigger", "name": "Trigger", "type": "signal", "required": true },
+        { "id": "quantity", "name": "Contracts", "type": "number", "required": true, "defaultValue": 1 }
+      ],
+      "outputs": [{ "id": "executed", "name": "Executed", "type": "signal" }],
+      "config": { "option_type": "put", "strike_selection": "OTM", "strike_offset_percent": -5, "expiration_days": 30, "leg": "short" },
+      "position": { "x": 600, "y": 280 }
+    },
+    {
+      "id": "trigger-early-exit",
+      "type": "trigger",
+      "name": "Time-Based",
+      "description": "Close spread at 21 DTE to avoid gamma risk",
+      "icon": "Clock",
+      "inputs": [
+        { "id": "time", "name": "Time", "type": "string", "required": true, "defaultValue": "09:35" },
+        { "id": "days", "name": "Days", "type": "string", "required": true, "defaultValue": "weekdays" }
+      ],
+      "outputs": [{ "id": "signal", "name": "Signal", "type": "signal" }],
+      "config": { "days_to_expiration_exit": 21 },
+      "position": { "x": 100, "y": 500 }
+    }
+  ],
+  "connections": [
+    { "id": "conn-1", "sourceBlockId": "trigger-below-ma", "sourceOutputId": "signal", "targetBlockId": "condition-confirm", "targetInputId": "input1" },
+    { "id": "conn-2", "sourceBlockId": "trigger-rsi-overbought", "sourceOutputId": "signal", "targetBlockId": "condition-confirm", "targetInputId": "input2" },
+    { "id": "conn-3", "sourceBlockId": "condition-confirm", "sourceOutputId": "output", "targetBlockId": "action-buy-long-put", "targetInputId": "trigger" },
+    { "id": "conn-4", "sourceBlockId": "condition-confirm", "sourceOutputId": "output", "targetBlockId": "action-sell-short-put", "targetInputId": "trigger" }
+  ],
+  "code": "",
+  "performance_summary": {
+    "sharpe_ratio": 1.22,
+    "total_return": 54.8,
+    "max_drawdown": 9.3
+  },
+  "author": "Agentic Trading"
+}
